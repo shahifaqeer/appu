@@ -549,22 +549,11 @@ function add_ad_non_uas(domain) {
     var tmp = sjcl.codec.hex.fromBits(sjcl.hash.sha256.hash(etld));
     var etld_hash = tmp.substring(tmp.length - 8, tmp.length);
 
-//    if (!(does_user_have_account(domain)) &&
-//	!(etld_hash in pii_vault.aggregate_data.non_user_account_sites)) {
-//
-//	pii_vault.aggregate_data.non_user_account_sites[etld_hash] = true;
-
-    if (!(does_user_have_account(domain)) &&
-        !load_nuas(etld_hash, function(x){console.log(x)})) {
-	// TODO fix this - the object stored contains true but how to access it?
-        // !(IS HASH IN STORAGE ARRAY(etld_hash)) {
-	pii_vault.aggregate_data.num_non_user_account_sites += 1;
-
-	flush_selective_entries("aggregate_data", ["num_non_user_account_sites"]);
-    // TODO replace this to flush to storage_meta instead
-    // write_to_local_storage()
-    //flush_selective_entries("aggregate_data", ["non_user_account_sites"]);
+    if (!(does_user_have_account(domain))) {
+        offload_nuas()
     }
+	pii_vault.aggregate_data.num_non_user_account_sites += 1;
+	flush_selective_entries("aggregate_data", ["num_non_user_account_sites"]);
 }
 
 function subtract_ad_non_uas(domain) {
@@ -572,15 +561,47 @@ function subtract_ad_non_uas(domain) {
     var tmp = sjcl.codec.hex.fromBits(sjcl.hash.sha256.hash(etld));
     var etld_hash = tmp.substring(tmp.length - 8, tmp.length);
 
-    //TODO IS HASH IN STORAGE ARRAY
-    //if (etld_hash in storage_meta.aggregate_data.non_user_account_sites) {
-    load_nuas(etld_hash, function(x){console.log(x)})
-	//TODO delete storage_meta.aggregate_data.non_user_account_sites[etld_hash];
-	remove_nuas(etld_hash)
-    pii_vault.aggregate_data.num_non_user_account_sites -= 1;
+    load_nuas(etld_hash, (function(site_hash) {
+        return function(data) {
+            if (!("non_user_account_sites" in data)) {
+                //do nothing
+                console.log("APPU DEBUG: no non_user_account_sites")
+            } else if (!(site_hash in data["non_user_account_sites"])) {
+                //do nothing
+                console.log("APPU DEBUG: no site_hash " + site_hash + "non_user_account_sites")
+            } else {
+                console.log("APPU DEBUG: remove " + site_hash + " from non_user_account_sites")
+                delete data["non_user_account_sites"][site_hash]
+                write_to_local_storage(data)
 
-	flush_selective_entries("aggregate_data", ["num_non_user_account_sites"]);
-    }
+                pii_vault.aggregate_data.num_non_user_account_sites -= 1;
+	            flush_selective_entries("aggregate_data", ["num_non_user_account_sites"]);
+            }
+        }
+    }(etld_hash)));
+}
+
+function add_ad_non_uas(domain) {
+    var etld = get_domain(domain);
+    var tmp = sjcl.codec.hex.fromBits(sjcl.hash.sha256.hash(etld));
+    var etld_hash = tmp.substring(tmp.length - 8, tmp.length);
+
+    load_nuas(etld_hash, (function(site_hash) {
+        return function(data) {
+            if (!("non_user_account_sites" in data)) {
+                data["non_user_account_sites"] = {}
+                console.log("APPU DEBUG: Create non_user_account_sites")
+            }
+            if (!(site_hash in data["non_user_account_sites"])) {
+                console.log("APPU DEBUG: Add "+ site_hash +" to non_user_account_sites")
+                data["non_user_account_sites"][site_hash] = true
+                write_to_local_storage(data)
+                pii_vault.aggregate_data.num_non_user_account_sites += 1;
+	            flush_selective_entries("aggregate_data", ["num_non_user_account_sites"]);
+            }
+        }
+    }(etld_hash)));
+}
 
 // **** BEGIN - Investigation state load/offload functions
 // This is to unlimitedStorage.
