@@ -10,7 +10,7 @@ function init_user_account_sites_entry(username, username_length, username_reaso
     //In case of aggrgate_data, this field contains the
     //actual username used to log into that site.
     //In case of current_report, this field contains an
-    //alias of actual username. For e.g. "john.smith" would 
+    //alias of actual username. For e.g. "john.smith" would
     //get replaced by "username23".
     //For this, we use pii_vault.aggregate_data.pi_field_value_identifiers
     //This will take care of anonymizing the fields in current_report
@@ -62,7 +62,7 @@ function initialize_report() {
     current_report.appu_errors = [];
 
     //Has user viewed "My Footprint" page since
-    //last report? Shows general curiosity and tech savvyness on behalf of 
+    //last report? Shows general curiosity and tech savvyness on behalf of
     //user. Also tells us how engaging appu is.
     current_report.num_myfootprint_visits = 0;
     current_report.myfootprint_time_spent = 0;
@@ -82,7 +82,7 @@ function initialize_report() {
     //Sites where users have been entering inputs.
     //Its only use is for Appu to detect the kind of
     //inputs that users have been entering and where.
-    //Also, if the input type is TEXT or similar, then length of the data 
+    //Also, if the input type is TEXT or similar, then length of the data
     //entered
     //Each entry is of the form:
     // [1, new Date(1354966002000), 'www.abc.com', 'test', 'button', 'length'],
@@ -94,8 +94,8 @@ function initialize_report() {
     // Sixth length of the input field
     current_report.input_fields = [];
 
-    //Current report - How many attempts it took to send the report 
-    //                 to the server? 
+    //Current report - How many attempts it took to send the report
+    //                 to the server?
     // (This could be because either stats servers were down OR
     //  user was not connected to the Internet)
     current_report.send_attempts = [];
@@ -155,7 +155,7 @@ function initialize_report() {
     //Once again don't enlist those sites
     current_report.num_non_user_account_sites = 0;
 
-    //Number of times appu was disabled. 
+    //Number of times appu was disabled.
     //and how long each time
     current_report.appu_disabled = [];
 
@@ -176,7 +176,7 @@ function initialize_report() {
     current_report.pwd_groups = {};
 
     //Similarity distance between each different password
-    //Each entry is like {"pwd_group_0" : [{ "pwd_group_1" : 23}, { "pwd_group_2" : 14}]} 
+    //Each entry is like {"pwd_group_0" : [{ "pwd_group_1" : 23}, { "pwd_group_2" : 14}]}
     current_report.pwd_similarity = {};
 
     //Downloaded PI from following sites
@@ -184,7 +184,7 @@ function initialize_report() {
     current_report.downloaded_pi = {};
 
     //Fields that share common values across sites
-    //Each entry is like: {'field_name' : ['site_1', 'site_2', 'site_3']} etc 
+    //Each entry is like: {'field_name' : ['site_1', 'site_2', 'site_3']} etc
     //One has to consult aggregate stats for this.
     current_report.common_fields = {};
 
@@ -201,8 +201,8 @@ function initialize_report() {
     //General info about user's environment
     current_report.browser = environ.browser.name;
     current_report.browser_version = environ.browser.version;
-    current_report.os = environ.platform.os;                      
-    current_report.os_version = environ.platform.version;                                    
+    current_report.os = environ.platform.os;
+    current_report.os_version = environ.platform.version;
     current_report.layout_engine = environ.browser.engine;
     current_report.layout_engine_version = environ.browser.engineVersion;
 
@@ -228,27 +228,27 @@ function initialize_aggregate_data() {
     //               username : 'john.doe',
     //               tot_http_requests_since_login : 0,
     //               tot_http_responses_since_login : 0,
-    //               cookies : 
+    //               cookies :
     //                        'session_cookie_key_1':
     //                               {
-    //                                 cookie_class : 'before', 'during', or 'after', 
+    //                                 cookie_class : 'before', 'during', or 'after',
     //                                 hashed_cookie_value : sha1sum(actual_cookie_value),
-    //                                 num_http_responses_cookie_unchanged: 
+    //                                 num_http_responses_cookie_unchanged:
     //                                 current_state: 'present', 'absent', 'changed'
     //                                 session_cookie : between 0 and 1.
     //                               }
     //              }
-    // 1. Cookie_class: 
+    // 1. Cookie_class:
     // 'during': for cookies that are set explicitly during a successful login process.
-    // 'before': for cookies cookie that are created even before a successful login. 
-    //           That may mean that its not a necessary cookie for detecting 
+    // 'before': for cookies cookie that are created even before a successful login.
+    //           That may mean that its not a necessary cookie for detecting
     //           login-state. However, depending on the server, its still possible for a cookie
     //           in this class to get different value after logging-in.
     // 'after':  cookie was set after successful login and hence is not related to detecting login-state.
     // Some initial observations: For facebook, all session cookies get class 'during'
-    // For github and amazon, all session cookies get class 'before'. That is they exist even before 
+    // For github and amazon, all session cookies get class 'before'. That is they exist even before
     // you login.
-    // 2. hashed_cookie_value: 
+    // 2. hashed_cookie_value:
     //    Just to see if server changes the value of the cookie and how often. Probably that
     //    would indicate which cookies are session cookies even if all the cookies have class
     //    'before'. Hypothesis here is that session cookies would have one constant value.
@@ -265,7 +265,7 @@ function initialize_aggregate_data() {
 
     // Records if one is logged-in to any particular site at the moment.
     // If so, what is the username identifier (such as username1) used.
-    // e.g. google.com : { 
+    // e.g. google.com : {
     //                     logged-in: yes,
     //                     username: "xyz"
     //                   }
@@ -309,8 +309,10 @@ function initialize_aggregate_data() {
     //Value corresponding to that is an object with following dictionary:
     //site_name, last_access_time, total_time_spent, site_category
     aggregate_data.num_non_user_account_sites = 0;
-    aggregate_data.non_user_account_sites = {};
-    
+
+    // shift this to storage_meta
+    //aggregate_data.non_user_account_sites = {};
+
     //Passwords data
     //pwd_groups is an associative array. Key is group name and values are list of sites
     //sharing that password
@@ -331,14 +333,14 @@ function initialize_aggregate_data() {
     //Values: time downloaded
     // field_name --> field value
     aggregate_data.per_site_pi = {};
-    
+
     //This is used to assign a unique identifier to
     //each possible value of PI.
     //For eg. an address like "122, 5th ST SE, ATLANTA 30318, GA, USA" will
     //get an identifier like "address1"
     //Or a name like "Appu Singh" will get an identifier like "name3"
     //This is useful to show in reports page (so that the real values are
-    // shown in the tooltip). Also it helps to always assign a unique 
+    // shown in the tooltip). Also it helps to always assign a unique
     //identifier even if that thing is downloaded multiple times over the
     //time.
     aggregate_data.pi_field_value_identifiers = {};
@@ -350,8 +352,14 @@ function initialize_aggregate_data() {
 //---------------------- START of CODE to MANAGE NON-USER-ACCOUNT SITES ---
 // NUAS: NON USER-ACCOUNT SITES, Uses bloom filter and chrome.storage
 
+// TODO call this function to initialize storage_meta.aggragate_data
+function init_non_user_account_sites() {
+    aggregate_data.non_user_account_sites = {};
+    return aggregate_data
+}
+
 // Perhaps I should create a class or a closure to deal with this shit
-// but then so far I have not used it (except a few callbacks), and just 
+// but then so far I have not used it (except a few callbacks), and just
 // plain old procedural programming seems good enough for now.
 
 // n: Assuming a user would have 10000 different nuas sites.
@@ -413,7 +421,7 @@ function read_nuas_bf_from_disk() {
 // }
 
 // function str2ab(str) {
-//     var buf = new ArrayBuffer(str.length); 
+//     var buf = new ArrayBuffer(str.length);
 //     var bufView = new Uint8Array(buf);
 
 //     for (var i=0, strLen=str.length; i<strLen; i++) {
@@ -523,7 +531,7 @@ function is_url_counted(url, bit_numbers) {
 }
 
 function add_url_to_nuas_bf(url) {
-    var bit_numbers = url_to_bits(url);    
+    var bit_numbers = url_to_bits(url);
     if (is_url_counted(url, bit_numbers)) {
 	return;
     }
@@ -540,15 +548,22 @@ function add_ad_non_uas(domain) {
     var etld = get_domain(domain);
     var tmp = sjcl.codec.hex.fromBits(sjcl.hash.sha256.hash(etld));
     var etld_hash = tmp.substring(tmp.length - 8, tmp.length);
-    
-    if (!(does_user_have_account(domain)) &&
-	!(etld_hash in pii_vault.aggregate_data.non_user_account_sites)) {
 
-	pii_vault.aggregate_data.non_user_account_sites[etld_hash] = true;
+//    if (!(does_user_have_account(domain)) &&
+//	!(etld_hash in pii_vault.aggregate_data.non_user_account_sites)) {
+//
+//	pii_vault.aggregate_data.non_user_account_sites[etld_hash] = true;
+
+    if (!(does_user_have_account(domain)) &&
+        !load_nuas(etld_hash, function(x){console.log(x)})) {
+	// TODO fix this - the object stored contains true but how to access it?
+        // !(IS HASH IN STORAGE ARRAY(etld_hash)) {
 	pii_vault.aggregate_data.num_non_user_account_sites += 1;
 
 	flush_selective_entries("aggregate_data", ["num_non_user_account_sites"]);
-	flush_selective_entries("aggregate_data", ["non_user_account_sites"]);
+    // TODO replace this to flush to storage_meta instead
+    // write_to_local_storage()
+    //flush_selective_entries("aggregate_data", ["non_user_account_sites"]);
     }
 }
 
@@ -556,20 +571,92 @@ function subtract_ad_non_uas(domain) {
     var etld = get_domain(domain);
     var tmp = sjcl.codec.hex.fromBits(sjcl.hash.sha256.hash(etld));
     var etld_hash = tmp.substring(tmp.length - 8, tmp.length);
-    
-    if (etld_hash in pii_vault.aggregate_data.non_user_account_sites) {
 
-	delete pii_vault.aggregate_data.non_user_account_sites[etld_hash];
-	pii_vault.aggregate_data.num_non_user_account_sites -= 1;
+    //TODO IS HASH IN STORAGE ARRAY
+    //if (etld_hash in storage_meta.aggregate_data.non_user_account_sites) {
+    load_nuas(etld_hash, function(x){console.log(x)})
+	//TODO delete storage_meta.aggregate_data.non_user_account_sites[etld_hash];
+	remove_nuas(etld_hash)
+    pii_vault.aggregate_data.num_non_user_account_sites -= 1;
 
 	flush_selective_entries("aggregate_data", ["num_non_user_account_sites"]);
-	flush_selective_entries("aggregate_data", ["non_user_account_sites"]);
     }
+
+// **** BEGIN - Investigation state load/offload functions
+// This is to unlimitedStorage.
+// None of the sensitive data is stored here.
+
+function offload_nuas(etld_hash) {
+    console.log("APPU DEBUG: Offloading non_user_account_site for " + etld_hash)
+    read_from_local_storage("non_user_account_sites", (function(site_hash) {
+        return function(data) {
+            if (!("non_user_account_sites" in data)) {
+                data["non_user_account_sites"] = {}
+            }
+            if (site_hash in data["non_user_account_sites"]) {
+                console.log("APPU DEBUG: " + site_hash + " already exists in non_user_account_sites")
+            }
+            data["non_user_account_sites"][site_hash] = true
+            write_to_local_storage(data)
+            console.log("APPU DEBUG: all site hashes after offload:" + JSON.stringify(data))
+        }
+    }(etld_hash)));
 }
 
+function load_nuas(etld_hash, cb) {
+    console.log("APPU DEBUG: Loading non user account sites for " + etld_hash)
+    if (cb == undefined) {
+        cb = cb_print("APPU DEBUG: state for: " + etld_hash + "\n")
+    }
+    read_from_local_storage("non_user_account_sites", cb)
+}
+
+function print_nuas(etld_hash) {
+    load_nuas(etld_hash, (function(site_hash) {
+        return function(data) {
+            if (!("non_user_account_sites" in data)) {
+                console.log("APPU DEBUG: non_user_account_sites not present")
+            } else if (!(site_hash in data["non_user_account_sites"])) {
+                console.log("APPU DEBUG: " + site_hash + " not present in non_user_account_sites")
+            } else {
+                console.log("APPU DEBUG: " + site_hash + " present")
+            }
+            //console.log("APPU DEBUG: all site hashes after offload:" + JSON.stringify(data))
+        }
+    }(etld_hash)));
+}
+
+function remove_nuas(etld_hash) {
+    console.log("APPU DEBUG: Cleaning non_user_account_site for " + etld_hash)
+    //delete_from_local_storage("non_user_account_sites")
+    read_from_local_storage("non_user_account_sites", (function(site_hash) {
+        return function(data) {
+            if (!("non_user_account_sites" in data)) {
+                console.log("APPU DEBUG: non_user_account_sites not present")
+            } else if (!(site_hash in data["non_user_account_sites"])) {
+                console.log("APPU DEBUG: " + site_hash + " not present in non_user_account_sites")
+            }
+            delete data["non_user_account_sites"][site_hash]
+            write_to_local_storage(data)
+            //console.log("APPU DEBUG: all site hashes after offload:" + JSON.stringify(data))
+        }
+    }(etld_hash)));
+}
+
+function print_non_user_account_sites() {
+    console.log("APPU DEBUG: Printing non_user_account_sites")
+    read_from_local_storage("non_user_account_sites", function(data) {
+        console.log(JSON.stringify(data))
+    })
+}
+
+function remove_non_user_account_sites() {
+    console.log("APPU DEBUG: Cleaning non_user_account_sites")
+    delete_from_local_storage("non_user_account_sites")
+}
 //---------------------- END of CODE to MANAGE NON-USER-ACCOUNT SITES
 
-// This gets called from update_user_account_sites_stats() (which in turn gets called from 
+// This gets called from update_user_account_sites_stats() (which in turn gets called from
 // bg_passwd.js after successful login) OR from "background.js" if the message is "signed_in"
 // with value "yes"
 function add_domain_to_uas(domain, username, username_length, username_reason) {
@@ -589,7 +676,7 @@ function add_domain_to_uas(domain, username, username_length, username_reason) {
 	cr.num_user_account_sites += 1;
 	flush_selective_entries("current_report", ["user_account_sites", "num_user_account_sites"]);
 
-	if (pii_vault.total_site_list.indexOf(domain) != -1 && 
+	if (pii_vault.total_site_list.indexOf(domain) != -1 &&
 	    !(does_user_have_account(domain))) {
 	    // This means that this site was counted as non user account site before.
 	    // So adjust it.
@@ -645,11 +732,11 @@ function update_user_account_sites_stats(domain, username, username_length, user
 // 	[1, new Date(1354966002000), 'www.abc.com', 'test', 'button', 0],
 function pii_log_user_input_type(message) {
     var total_entries = pii_vault.current_report.input_fields.length;
-    var last_index =  total_entries ? pii_vault.current_report.input_fields[total_entries - 1][0] : 0; 
+    var last_index =  total_entries ? pii_vault.current_report.input_fields[total_entries - 1][0] : 0;
     var domain_input_elements = [
 	last_index + 1,
-	new Date(), 
-	get_domain(message.domain), 
+	new Date(),
+	get_domain(message.domain),
 	message.attr_list.name,
 	message.attr_list.type,
 	message.attr_list.length,
