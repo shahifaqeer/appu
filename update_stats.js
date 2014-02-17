@@ -544,18 +544,8 @@ function add_url_to_nuas_bf(url) {
 //Following adds a site that does not have user account to aggregate data.
 //By adding I mean it adds only 8 bytes of sha256 sum. This is easier
 //than maintaining bloom filter.
-function add_ad_non_uas(domain) {
-    var etld = get_domain(domain);
-    var tmp = sjcl.codec.hex.fromBits(sjcl.hash.sha256.hash(etld));
-    var etld_hash = tmp.substring(tmp.length - 8, tmp.length);
 
-    if (!(does_user_have_account(domain))) {
-        offload_nuas()
-    }
-	pii_vault.aggregate_data.num_non_user_account_sites += 1;
-	flush_selective_entries("aggregate_data", ["num_non_user_account_sites"]);
-}
-
+/*
 function subtract_ad_non_uas(domain) {
     var etld = get_domain(domain);
     var tmp = sjcl.codec.hex.fromBits(sjcl.hash.sha256.hash(etld));
@@ -602,78 +592,138 @@ function add_ad_non_uas(domain) {
         }
     }(etld_hash)));
 }
+*/
 
 // **** BEGIN - Investigation state load/offload functions
 // This is to unlimitedStorage.
 // None of the sensitive data is stored here.
 
-function offload_nuas(etld_hash) {
-    console.log("APPU DEBUG: Offloading non_user_account_site for " + etld_hash)
-    read_from_local_storage("non_user_account_sites", (function(site_hash) {
-        return function(data) {
-            if (!("non_user_account_sites" in data)) {
-                data["non_user_account_sites"] = {}
-            }
-            if (site_hash in data["non_user_account_sites"]) {
-                console.log("APPU DEBUG: " + site_hash + " already exists in non_user_account_sites")
-            }
-            data["non_user_account_sites"][site_hash] = true
-            write_to_local_storage(data)
-            console.log("APPU DEBUG: all site hashes after offload:" + JSON.stringify(data))
-        }
-    }(etld_hash)));
-}
+function add_visited_site(domain) {
+    var etld = get_domain(domain);
+    var tmp = sjcl.codec.hex.fromBits(sjcl.hash.sha256.hash(etld));
+    var etld_hash = tmp.substring(tmp.length - 8, tmp.length);
 
-function load_nuas(etld_hash, cb) {
-    console.log("APPU DEBUG: Loading non user account sites for " + etld_hash)
-    if (cb == undefined) {
-        cb = cb_print("APPU DEBUG: state for: " + etld_hash + "\n")
-    }
-    read_from_local_storage("non_user_account_sites", cb)
-}
-
-function print_nuas(etld_hash) {
     load_nuas(etld_hash, (function(site_hash) {
         return function(data) {
-            if (!("non_user_account_sites" in data)) {
-                console.log("APPU DEBUG: non_user_account_sites not present")
-            } else if (!(site_hash in data["non_user_account_sites"])) {
-                console.log("APPU DEBUG: " + site_hash + " not present in non_user_account_sites")
-            } else {
-                console.log("APPU DEBUG: " + site_hash + " present")
+            if (!("visited_sites" in data)) {
+                data["visited_sites"] = {}
+                console.log("APPU DEBUG: Create visited_sites object in chrome storage")
             }
-            //console.log("APPU DEBUG: all site hashes after offload:" + JSON.stringify(data))
+            if (!(site_hash in data["visited_sites"])) {
+                console.log("APPU DEBUG: Add "+ site_hash +" to visited_sites")
+                data["non_user_account_sites"][site_hash] = true
+                write_to_local_storage(data)
+                pii_vault.aggregate_data.num_non_user_account_sites += 1;
+	            flush_selective_entries("aggregate_data", ["num_non_user_account_sites"]);
+            }
         }
     }(etld_hash)));
 }
 
-function remove_nuas(etld_hash) {
-    console.log("APPU DEBUG: Cleaning non_user_account_site for " + etld_hash)
-    //delete_from_local_storage("non_user_account_sites")
-    read_from_local_storage("non_user_account_sites", (function(site_hash) {
+function initialize_visited_site_object() {
+    site_obj = {}
+    site_obj["num_visits"] = 0
+    site_obj["tot_time_spent"] = 0
+    site_obj["latest_visit"] = 0
+    return site_obj
+}
+
+function update_visited_site_object(site_obj, time_spent_in_this_session, timestamp_now) {
+    if (!("num_visits" in site_obj)) {
+        site_obj = initialize_visited_site_object(site_obj)
+    }
+    site_obj["num_visits"] += 1
+    site_obj["tot_time_spent"] += time_spent_in_this_session
+    site_obj["latest_visit"] = timestamp_now
+    return site_obj
+}
+
+function offload_visited_site_info_callback(site_hash, timespent, now) {
+    return function(data) {
+        if (!(site_hash in data["visited_sites"])) {
+            // increase num_visits += 1, tot_time_spent += delta_time, latest_visit = now()
+            data["visited_sites"][site_hash] = initialize_visited_site_object()
+            update_pii_vault_aggregate_data_counters()
+            console.log("APPU DEBUG: create " + site_hash + " object; "+ JSON.stringify(data["visited_sites"][site_hash]))
+        }
+        update_visited_site_object(data["visited_sites"][site_hash], timespent , now)
+        write_to_local_storage(data)
+        console.log("APPU DEBUG: updated " + site_hash + " object; "+ JSON.stringify(data["visited_sites"][site_hash]))
+    }
+}
+
+function offload_visited_site_info(etld_hash, timespent, now) {
+    timespent = typeof timespent !== 'undefined' ? timespent : 42;
+    now = typeof now !== 'undefined' ? now : Date.now();
+    load_visited_site_info(etld_hash, offload_visited_site_info_callback(etld_hash, timespent, now))
+}
+
+//function offload_visited_site_info(etld_hash) {
+//    console.log("APPU DEBUG: Offloading visited_site info for " + etld_hash)
+//    read_from_local_storage("visited_sites", (function(site_hash, timespent, now) {
+//        return function(data) {
+//            if (!(site_hash in data["visited_sites"])) {
+//                // increase num_visits += 1, tot_time_spent += delta_time, latest_visit = now()
+//                data["visited_sites"][site_hash] = initialize_visited_site_object()
+//                console.log("APPU DEBUG: create " + site_hash + " object; "+ JSON.stringify(data["visited_sites"][site_hash]))
+//            }
+//            update_visited_site_object(data["visited_sites"][site_hash], timespent , now)
+//            write_to_local_storage(data)
+//            console.log("APPU DEBUG: updated " + site_hash + " object; "+ JSON.stringify(data["visited_sites"][site_hash]))
+//        }
+//    }(etld_hash, 0.1, 12345)));
+//}
+
+function load_visited_site_info(etld_hash, cb) {
+    console.log("APPU DEBUG: Loading visited site info for " + etld_hash)
+    if (cb == undefined) {
+        cb = cb_print("APPU DEBUG: site info for: " + etld_hash + "\n")
+    }
+    read_from_local_storage("visited_sites", cb)
+}
+
+function print_visited_site_info(etld_hash) {
+    load_visited_site_info(etld_hash, (function(site_hash) {
         return function(data) {
-            if (!("non_user_account_sites" in data)) {
-                console.log("APPU DEBUG: non_user_account_sites not present")
-            } else if (!(site_hash in data["non_user_account_sites"])) {
-                console.log("APPU DEBUG: " + site_hash + " not present in non_user_account_sites")
+            if (!("visited_sites" in data)) {
+                console.log("APPU DEBUG: no visited_sites object in storage")
+            }else if (!(site_hash in data["visited_sites"])) {
+                console.log("APPU DEBUG: " + site_hash + " not present in visited_sites")
+            } else {
+                console.log("APPU DEBUG: visited_site_info for "+ site_hash + ": " + JSON.stringify(data["visited_sites"][site_hash]))
             }
-            delete data["non_user_account_sites"][site_hash]
+        }
+    }(etld_hash)));
+}
+
+function remove_visited_site_info(etld_hash) {
+    // may be useful for removing a blacklisted site added later by the user
+    console.log("APPU DEBUG: Remove visited_site info for " + etld_hash)
+    read_from_local_storage("visited_sites", (function(site_hash) {
+        return function(data) {
+            if (!(site_hash in data["visited_sites"])) {
+                console.log("APPU DEBUG: " + site_hash + " not present in visited_sites")
+            }
+            delete data["visited_sites"][site_hash]
             write_to_local_storage(data)
             //console.log("APPU DEBUG: all site hashes after offload:" + JSON.stringify(data))
         }
     }(etld_hash)));
 }
 
-function print_non_user_account_sites() {
-    console.log("APPU DEBUG: Printing non_user_account_sites")
-    read_from_local_storage("non_user_account_sites", function(data) {
+function print_visited_sites() {
+    console.log("APPU DEBUG: Printing all visited_sites")
+    read_from_local_storage("visited_sites", function(data) {
         console.log(JSON.stringify(data))
     })
 }
 
-function remove_non_user_account_sites() {
-    console.log("APPU DEBUG: Cleaning non_user_account_sites")
-    delete_from_local_storage("non_user_account_sites")
+function remove_visited_sites() {
+    console.log("APPU DEBUG: Cleaning visited_sites to empty object")
+    read_from_local_storage("visited_sites", function(data) {
+        data["visited_sites"] = {}
+        write_to_local_storage(data)
+    });
 }
 //---------------------- END of CODE to MANAGE NON-USER-ACCOUNT SITES
 
