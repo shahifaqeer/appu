@@ -629,7 +629,7 @@ function update_visited_site_object(site_obj, time_spent_in_this_session, timest
 // TODO functions to check bookkeeping.visited_sites
 function update_pii_vault_aggregate_data_counters(etld_hash) {
     pii_vault.aggregate_data.num_total_sites += 1
-    pii_vault.bookkeeping.visited_sites[etld_hash] = true
+    //pii_vault.bookkeeping.visited_sites[etld_hash] = true
 }
 
 function offload_visited_site_info_callback(site_hash, timespent, now) {
@@ -637,7 +637,7 @@ function offload_visited_site_info_callback(site_hash, timespent, now) {
         if (!(site_hash in data["visited_sites"])) {
             // increase num_visits += 1, tot_time_spent += delta_time, latest_visit = now()
             data["visited_sites"][site_hash] = initialize_visited_site_object()
-            update_pii_vault_aggregate_data_counters(etld_hash)
+            update_pii_vault_aggregate_data_counters(site_hash)
             console.log("APPU DEBUG: create " + site_hash + " object; "+ JSON.stringify(data["visited_sites"][site_hash]))
         }
         update_visited_site_object(data["visited_sites"][site_hash], timespent , now)
@@ -673,7 +673,7 @@ function load_visited_site_info(etld_hash, cb) {
     if (cb == undefined) {
         cb = cb_print("APPU DEBUG: site info for: " + etld_hash + "\n")
     }
-    read_from_local_storage("visited_sites", cb)
+    read_from_local_storage('visited_sites', cb)
 }
 
 function print_visited_site_info(etld_hash) {
