@@ -2,7 +2,7 @@
 // Storage to local unlimited storage.
 // None of the sensitive data is stored here.
 
-// I am maintaining this because on Chrome on MacOS, a call to 
+// I am maintaining this because on Chrome on MacOS, a call to
 // get all keys currently on harddisk does not succeed for extention Appu.
 // Works for other sample extention that I wrote to test this feature and also works
 // on other platforms (Win, Linux) for Appu extention. For now, this is a workaround.
@@ -17,6 +17,18 @@ function init_storage_meta() {
 		storage_meta = rc;
 	    }
 	});
+}
+
+// Initialize function to create data["account_sites"] object
+// in chrome.storage which maintains a mapping of 8-byte site hashes
+// TODO shift everything to all account sites instead of nuas
+function init_account_sites() {
+    read_from_local_storage("account_sites", function(data) {
+        if (!("account_sites" in data)) {
+            data["account_sites"] = {}
+            write_to_local_storage(data)
+        }
+    });
 }
 
 function cb_print(msg) {
@@ -42,7 +54,7 @@ function get_storage_size(cb) {
 function expunge_local_storage() {
     var b = storage_meta["storage_meta"].slice();
     for (var i = 0; i < b.length; i++) {
-	delete_from_local_storage(b[i]);	
+	delete_from_local_storage(b[i]);
     }
     // chrome.storage.local.clear(cb);
 }
@@ -72,3 +84,4 @@ function delete_from_local_storage(key) {
 }
 
 init_storage_meta();
+init_account_sites();
