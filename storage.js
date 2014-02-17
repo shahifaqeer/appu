@@ -22,10 +22,10 @@ function init_storage_meta() {
 // Initialize function to create data["account_sites"] object
 // in chrome.storage which maintains a mapping of 8-byte site hashes
 // TODO shift everything to all account sites instead of nuas
-function init_account_sites() {
-    read_from_local_storage("account_sites", function(data) {
-        if (!("account_sites" in data)) {
-            data["account_sites"] = {}
+function init_visited_sites() {
+    read_from_local_storage("visited_sites", function(data) {
+        if (!("visited_sites" in data)) {
+            data["visited_sites"] = {}
             write_to_local_storage(data)
         }
     });
@@ -84,4 +84,4 @@ function delete_from_local_storage(key) {
 }
 
 init_storage_meta();
-init_account_sites();
+init_visited_sites();
