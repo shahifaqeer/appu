@@ -74,7 +74,7 @@ var on_disk_values = {
 	"layout_engine_version",
     ],
     "aggregate_data" : [
-	"session_cookie_store",		
+	"session_cookie_store",
 	"current_loggedin_state",
 	"initialized_time",
 	"num_viewed",
@@ -91,10 +91,11 @@ var on_disk_values = {
 	"pwd_similarity",
 	"per_site_pi",
 	"pi_field_value_identifiers",
+    "visited_sites",
     ],
 }
 
-//Initializing each property. 
+//Initializing each property.
 //TODO: Perhaps a better way is to write a generic function
 //that accepts property_name and property initializer for that property.
 //It will test if property exists. If not, then call the initializer function on that property.
@@ -110,13 +111,13 @@ function vault_init() {
 	//However, if there is a duplicate GUID then we are in trouble.
 	//Need to take care of that somehow.
 	// 	pii_vault.guid = generate_random_id();
-	
+
 	// 	console.log("vault_init(): Updated GUID in vault: " + pii_vault.guid);
 	// 	vault_write("guid", pii_vault.guid);
-	
+
 	// 	pii_vault.current_user = current_user;
 	// 	vault_write("current_user", pii_vault.current_user);
-	
+
 	// 	pii_vault.sign_in_status = sign_in_status;
 	// 	vault_write("sign_in_status", pii_vault.sign_in_status);
 
@@ -146,7 +147,7 @@ function vault_init() {
 	    current_ip = salt_table[i];
 	}
 	pii_vault.salt_table = salt_table;
-	
+
 	console.log("vault_init(): Updated SALT TABLE in vault");
 	vault_write("salt_table", pii_vault.salt_table);
     }
@@ -181,14 +182,14 @@ function vault_init() {
 
     if (!pii_vault.password_hashes) {
 	// This is maintained separarely from current_report as it should not
-	// be sent to the server. 
+	// be sent to the server.
 	// Structure is: Key: 'username:etld'
-	// Value: { 
-	//    'pwd_full_hash':'xyz', 
-	//    'pwd_short_hash':'a', 
+	// Value: {
+	//    'pwd_full_hash':'xyz',
+	//    'pwd_short_hash':'a',
 	//    'salt' : 'zz',
 	//    'pwd_group' : '',
-	//    'initialized': Date } 
+	//    'initialized': Date }
 	pii_vault.password_hashes = {};
 	console.log("vault_init(): Updated PASSWORD_HASHES in vault");
 	vault_write("password_hashes", pii_vault.password_hashes);
@@ -202,10 +203,10 @@ function vault_init() {
 
     // All config values
     if (!pii_vault.config.deviceid) {
-	//A device id is only used to identify all reports originating from a 
+	//A device id is only used to identify all reports originating from a
 	//specific Appu install point. It serves no other purpose.
 	pii_vault.config.deviceid = generate_random_id();
-	
+
 	console.log("vault_init(): Updated DEVICEID in vault: " + pii_vault.config.deviceid);
 	flush_selective_entries("config", ["deviceid"]);
     }
@@ -237,7 +238,7 @@ function vault_init() {
 	pii_vault.config.reporting_hour = rand_minutes;
 	console.log("vault_init(): Updated REPORTING_HOUR in vault");
 	vault_write("config:reporting_hour", pii_vault.config.reporting_hour);
-    }    
+    }
 
     if (!pii_vault.config.reporting_interval) {
 	//3 days in minutes
@@ -248,7 +249,7 @@ function vault_init() {
 
     if (!pii_vault.config.next_reporting_time) {
 	var curr_time = new Date();
-	//Advance by 3 days. 
+	//Advance by 3 days.
 	curr_time.setMinutes( curr_time.getMinutes() + pii_vault.config.reporting_interval);
 	//Third day's 0:0:0 am
 	curr_time.setSeconds(0);
@@ -257,7 +258,7 @@ function vault_init() {
 	curr_time.setMinutes( curr_time.getMinutes() + pii_vault.config.reporting_hour);
 	//Start reporting next day
 	pii_vault.config.next_reporting_time = curr_time.toString();
-	
+
 	console.log("Report will be sent everyday at "+ Math.floor(rand_minutes/60) + ":" + (rand_minutes%60));
 	console.log("Next scheduled reporting is: " + curr_time);
 	console.log("vault_init(): Updated NEXT_REPORTING_TIME in vault");
@@ -290,7 +291,7 @@ function vault_init() {
     }
 
     //Three different types of reporting.
-    //Manual: If reporting time of the day and if report ready, interrupt user and ask 
+    //Manual: If reporting time of the day and if report ready, interrupt user and ask
     //        him to review, modify and then send report.
     //Auto: Send report automatically when ready.
     //Differential: Interrupt user to manually review report only if current report
@@ -301,7 +302,7 @@ function vault_init() {
 	pii_vault.options.report_setting = "manual";
 	console.log("vault_init(): Updated REPORT_SETTING in vault");
 	vault_write("options:report_setting", pii_vault.options.report_setting);
-    }    
+    }
 
     if (!pii_vault.options.monitor_icon_setting) {
 	pii_vault.options.monitor_icon_setting = "no";
