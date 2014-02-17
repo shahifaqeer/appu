@@ -603,21 +603,8 @@ function add_visited_site(domain) {
     var tmp = sjcl.codec.hex.fromBits(sjcl.hash.sha256.hash(etld));
     var etld_hash = tmp.substring(tmp.length - 8, tmp.length);
 
-    load_nuas(etld_hash, (function(site_hash) {
-        return function(data) {
-            if (!("visited_sites" in data)) {
-                data["visited_sites"] = {}
-                console.log("APPU DEBUG: Create visited_sites object in chrome storage")
-            }
-            if (!(site_hash in data["visited_sites"])) {
-                console.log("APPU DEBUG: Add "+ site_hash +" to visited_sites")
-                data["non_user_account_sites"][site_hash] = true
-                write_to_local_storage(data)
-                pii_vault.aggregate_data.num_non_user_account_sites += 1;
-	            flush_selective_entries("aggregate_data", ["num_non_user_account_sites"]);
-            }
-        }
-    }(etld_hash)));
+    // TODO include parameters time_spent in sec, Date.now()
+    offload_visited_site_info(etld_hash)
 }
 
 function initialize_visited_site_object() {
@@ -638,12 +625,19 @@ function update_visited_site_object(site_obj, time_spent_in_this_session, timest
     return site_obj
 }
 
+// TODO create functions to flush bookkeeping object every 10 hours
+// TODO functions to check bookkeeping.visited_sites
+function update_pii_vault_aggregate_data_counters(etld_hash) {
+    pii_vault.aggregate_data.num_total_sites += 1
+    pii_vault.bookkeeping.visited_sites[etld_hash] = true
+}
+
 function offload_visited_site_info_callback(site_hash, timespent, now) {
     return function(data) {
         if (!(site_hash in data["visited_sites"])) {
             // increase num_visits += 1, tot_time_spent += delta_time, latest_visit = now()
             data["visited_sites"][site_hash] = initialize_visited_site_object()
-            update_pii_vault_aggregate_data_counters()
+            update_pii_vault_aggregate_data_counters(etld_hash)
             console.log("APPU DEBUG: create " + site_hash + " object; "+ JSON.stringify(data["visited_sites"][site_hash]))
         }
         update_visited_site_object(data["visited_sites"][site_hash], timespent , now)
