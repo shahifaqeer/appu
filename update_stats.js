@@ -348,6 +348,16 @@ function initialize_aggregate_data() {
     return aggregate_data;
 }
 
+// contains visited sites information and stats for quick access
+// on miss, data is loaded from storage. if not in storage, data is created
+// sync cache to storage every 10 mins and clean it up every 10 hours by
+// deleting old entries and only keeping latest 90 entries.
+function initialize_cache() {
+    var cache = {};
+    cache.visited_sites = {};
+    cache.site_stats = {};
+    return cache;
+}
 
 //---------------------- START of CODE to MANAGE NON-USER-ACCOUNT SITES ---
 // NUAS: NON USER-ACCOUNT SITES, Uses bloom filter and chrome.storage
@@ -705,12 +715,6 @@ function remove_visited_site_info(etld_hash) {
     }(etld_hash)));
 }
 
-function print_visited_sites() {
-    console.log("APPU DEBUG: Printing all visited_sites")
-    read_from_local_storage("visited_sites", function(data) {
-        console.log(JSON.stringify(data))
-    })
-}
 
 function remove_visited_sites() {
     console.log("APPU DEBUG: Cleaning visited_sites to empty object")
@@ -819,3 +823,217 @@ function pii_log_user_input_type(message) {
 	});
     }
 }
+
+
+// ***************** BEGIN ****************************
+// Code for temporary cache of visited_sites in pii_vault
+// synchronization to storage needed every 10 mins
+// flush lowest used websites every 10 hours
+
+function add_visited_site_to_cache(domain) {
+    // input: domain -> calculate site_hash
+    // if site_hash not in vault load_visited_site_from_storage(site_hash) into cache or create new entry
+    // add site_hash to pii_vault.cache.visited_sites
+    // update pii_vault.cache.site_stats
+
+    var etld = get_domain(domain);
+    var tmp = sjcl.codec.hex.fromBits(sjcl.hash.sha256.hash(etld));
+    var etld_hash = tmp.substring(tmp.length - 8, tmp.length);
+
+    if (!(etld_hash in pii_vault.cache.visited_sites)) {
+        load_visited_site_from_storage(etld_hash)
+    } else {
+    // not in cache but visits should be added
+        update_visited_site_in_cache(etld_hash)
+        update_site_stats_in_cache(1, 0, 0)
+    }
+    console.log("APPU DEBUG: Done adding and updating visited site " + etld_hash + " in cache")
+}
+
+function create_visited_site_in_cache(etld_hash) {
+    pii_vault.cache.visited_sites[etld_hash] = {}
+    pii_vault.cache.visited_sites[etld_hash]["tot_time_spent"] = 0;
+    pii_vault.cache.visited_sites[etld_hash]["latest_visit"] = 0;
+    pii_vault.cache.visited_sites[etld_hash]["num_visits"] = 0;
+    pii_vault.cache.visited_sites[etld_hash]["dirty"] = 0;
+    //this function only runs if site_stats does not exist already
+    if (!("num_visited_sites" in pii_vault.cache.site_stats)) {
+        create_site_stats_in_cache()
+    }
+    console.log("APPU DEBUG: Create new visited_site entry in cache for " + etld_hash)
+}
+
+function create_site_stats_in_cache() {
+    pii_vault.cache.site_stats["num_visited_sites"] = 0
+    pii_vault.cache.site_stats["num_removed_sites"] = 0
+    pii_vault.cache.site_stats["num_user_account_sites"] = 0
+    pii_vault.cache.site_stats["num_non_user_account_sites"] = 0
+    pii_vault.cache.site_stats["size_visited_sites"] = 0
+    pii_vault.cache.site_stats["dirty"] = 0
+}
+
+function update_visited_site_in_cache(etld_hash) {
+    // TODO fix time_spent stuff
+    if (!(etld_hash in pii_vault.cache.visited_sites)) {
+        create_visited_site_in_cache(etld_hash)
+    }
+    time_spent = 0.1
+    pii_vault.cache.visited_sites[etld_hash]["tot_time_spent"] += time_spent
+    pii_vault.cache.visited_sites[etld_hash]["latest_visit"] = Date.now()
+    pii_vault.cache.visited_sites[etld_hash]["num_visits"] += 1
+    pii_vault.cache.visited_sites[etld_hash]["dirty"] = 1
+    console.log("APPU DEBUG: Update visited_site entry in cache for " + etld_hash)
+}
+
+function update_site_stats_in_cache(visited_sites_increment, removed_sites_increment, user_account_sites_increment) {
+    //this function will only run if site_stats does not exist already
+    if (!("num_visited_sites" in pii_vault.cache.site_stats)) {
+        create_site_stats_in_cache()
+    }
+
+    pii_vault.cache.site_stats["num_visited_sites"] += visited_sites_increment
+    pii_vault.cache.site_stats["num_removed_sites"] += removed_sites_increment
+    pii_vault.cache.site_stats["num_user_account_sites"] += user_account_sites_increment
+    pii_vault.cache.site_stats["num_non_user_account_sites"] = pii_vault.cache.site_stats["num_visited_sites"] - pii_vault.cache.site_stats["num_user_account_sites"]
+    pii_vault.cache.site_stats["dirty"] = 1
+    console.log("APPU DEBUG: Update site_stats in cache")
+}
+
+function load_visited_site_from_storage(etld_hash) {
+    //input: site_hash; if site found then load it, else create it. dirty will be 1 when it gets updated
+    read_from_local_storage("visited_sites", (function(site_hash) {
+        return function(data) {
+            if (site_hash in data["visited_sites"]) {
+                //load it to cache if it exists
+                pii_vault.cache.visited_sites[site_hash] = data["visited_sites"][site_hash]
+                pii_vault.cache.visited_sites[site_hash]["dirty"] = 0
+                console.log("APPU DEBUG: Load " + site_hash + " info from storage.visited_sites")
+            } else {
+                console.log("APPU DEBUG: " + site_hash + " not present in storage.visited_sites. Create it in cache")
+                //create it in cache if it doesn't exist in storage
+                create_visited_site_in_cache(site_hash)
+                // every time a site is added to cache.visited_sites, increment cache.site_stats.size_visited_sites
+                // and visited site stats
+                pii_vault.cache.site_stats["size_visited_sites"] += 1
+                pii_vault.cache.site_stats["dirty"] = 1
+                update_visited_site_in_cache(site_hash)
+                update_site_stats_in_cache(1, 0, 0)
+            }
+        }
+    }(etld_hash)));
+}
+
+function flush_cache_to_storage() {
+    //sync dirty = 1 every 10 mins
+    read_from_local_storage("site_stats", function(data) {
+        if (pii_vault.cache.site_stats["dirty"] == 1) {
+            //directly replace data["site_stats"] - no need to read it first
+            data["site_stats"] = pii_vault.cache.site_stats
+            // don't copy dirty bit
+            delete data["site_stats"]["dirty"]
+            write_to_local_storage(data)
+            // reset dirty bit to 0
+        }
+        pii_vault.cache.site_stats["dirty"] == 0
+    })
+
+    read_from_local_storage("visited_sites", function(data) {
+        // read info from cache and find entries with dirty bits set
+        for (var hash_key in pii_vault.cache.visited_sites) {
+            if (pii_vault.cache.visited_sites.hasOwnProperty(hash_key)) {
+                var obj = pii_vault.cache.visited_sites[hash_key];
+                if (obj['dirty'] == 1) {
+                    //copy obj to data["visited_sites"]
+                    data["visited_sites"][hash_key] = obj;
+                    // make sure you delete the dirty bit from storage
+                    delete data["visited_sites"][hash_key]["dirty"]
+                    // reset dirty bit to 0 after copy
+                    obj["dirty"] = 0;
+                }
+            }
+        }
+        write_to_local_storage(data)
+    })
+    console.log("APPU DEBUG: Flush cache to storage at time " + Date.now())
+}
+
+function clear_extra_visited_sites_from_cache(MAX_SIZE_VISITED_SITES) {
+    console.log("APPU DEBUG: Make sure you run flush_cache_to_storage() before clearing!")
+    // remember to run flush before running this function!
+    MAX_SIZE_VISITED_SITES = typeof MAX_SIZE_VISITED_SITES !== 'undefined' ? MAX_SIZE_VISITED_SITES : 100;
+    // every 10 hours remove visited sites >= limit which have lowest latest_visit times
+    if (pii_vault.cache.site_stats.size_visited_sites >= MAX_SIZE_VISITED_SITES) {
+        console.log("APPU DEBUG: Number of visited_sites in cache = " + pii_vault.cache.site_stats.size_visited_sites)
+        //console.log("APPU DEBUG: Length of visited_sites in cache = " + Object.keys(pii_vault.cache.visited_sites).length)
+        // loop over all cache.visited_sites and keep adding [time:site_hash] to deletables object
+        var sortable = [];
+        for (var hash_key in pii_vault.cache.visited_sites) {
+            if (pii_vault.cache.visited_sites.hasOwnProperty(hash_key)) {
+                sortable.push([hash_key, pii_vault.cache.visited_sites[hash_key]["latest_visit"]])
+            }
+        }
+        sortable.sort(function(a, b) {return a[1] - b[1]});
+        var removable = sortable.slice(0,-1 * MAX_SIZE_VISITED_SITES);
+        console.log("APPU DEBUG: Top sites to be removed are: "+ JSON.stringify(removable))
+        for (var indx_num in removable) {
+            site_hash = removable[indx_num][0]
+            delete pii_vault.cache.visited_sites[site_hash]
+        }
+        pii_vault.cache.site_stats.size_visited_sites = MAX_SIZE_VISITED_SITES
+    }
+    console.log("APPU DEBUG: New length of visited_sites in cache should be " + pii_vault.cache.site_stats.size_visited_sites + " but is " + Object.keys(pii_vault.cache.visited_sites).length)
+}
+
+// TODO untested
+function expunge_visited_sites_cache() {
+    console.log("APPU DEBUG: Expunge visited_sites from cache")
+    pii_vault.cache["visited_sites"] = {}
+}
+
+// TODO untested
+function remove_visited_site_from_cache(etld_hash) {
+    console.log("APPU DEBUG: Remove visited_site from cache for " + etld_hash)
+    delete pii_vault.cache.visited_sites[etld_hash]
+    pii_vault.cache.site_stats.size_visited_sites -= 1
+}
+
+// TODO untested
+function remove_visited_site_from_storage(etld_hash) {
+    // may be useful for removing a blacklisted site added later by the user
+    console.log("APPU DEBUG: Remove visited_site from storage for " + etld_hash)
+    read_from_local_storage("visited_sites", (function(site_hash) {
+        return function(data) {
+            if (!(site_hash in data["visited_sites"])) {
+                console.log("APPU DEBUG: " + site_hash + " not present in visited_sites")
+            }
+            delete data["visited_sites"][site_hash]
+            write_to_local_storage(data)
+        }
+    }(etld_hash)));
+}
+
+function print_visited_sites_from_cache() {
+    console.log("APPU DEBUG: Printing all visited_sites from cache")
+    console.log(JSON.stringify(pii_vault.cache.visited_sites))
+}
+
+function print_site_stats_from_cache() {
+    console.log("APPU DEBUG: Printing all visited_sites from cache")
+    console.log(JSON.stringify(pii_vault.cache.site_stats))
+}
+
+function print_visited_sites_from_storage() {
+    console.log("APPU DEBUG: Printing all visited_sites from memory")
+    read_from_local_storage("visited_sites", function(data) {
+        console.log(JSON.stringify(data))
+    })
+}
+
+function print_site_stats_from_storage() {
+    console.log("APPU DEBUG: Printing all visited_sites from memory")
+    read_from_local_storage("site_stats", function(data) {
+        console.log(JSON.stringify(data))
+    })
+}
+
+// *********************** END ****************************

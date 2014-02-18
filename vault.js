@@ -91,7 +91,10 @@ var on_disk_values = {
 	"pwd_similarity",
 	"per_site_pi",
 	"pi_field_value_identifiers",
+    ],
+    "cache" : [
     "visited_sites",
+    "site_stats",
     ],
 }
 
@@ -347,6 +350,14 @@ function vault_init() {
 
 	flush_aggregate_data();
     }
+
+    // All cache values
+    if (!pii_vault.cache) {
+	pii_vault.cache = initialize_cache();
+	console.log("vault_init(): Updated CACHE in vault");
+
+	flush_cache();
+    }
 }
 
 function vault_read() {
@@ -443,6 +454,12 @@ function flush_aggregate_data() {
     }
 }
 
+function flush_cache() {
+    for (var j = 0; j < on_disk_values.cache.length; j++) {
+	var write_key = "cache:" + on_disk_values.cache[j];
+	vault_write(write_key, pii_vault.cache[on_disk_values.cache[j]]);
+    }
+}
 
 function flush_selective_entries(struct_name, entry_list) {
     for (var j = 0; j < entry_list.length; j++) {
