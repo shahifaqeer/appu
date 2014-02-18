@@ -320,6 +320,11 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 	var domain = get_domain(message.domain);
 
 	pii_vault.current_report.total_time_spent += message.time_spent;
+
+    //update cache.visited_site[site_hash].tot_time_spent using add_visited_site_to_cache()
+    //can also save both time_spent and Date.now() info to get site usage as time series
+    add_visited_site_to_cache(domain, message.time_spent)
+
 	if (message.am_i_logged_in) {
 	    pii_vault.current_report.total_time_spent_logged_in += message.time_spent;
 	}
@@ -775,6 +780,7 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
     }
     else if (message.type == "report_time_spent") {
 	pii_vault.current_report.report_time_spent += message.time_spent;
+
 	// console.log("APPU DEBUG: Time spent in reports tab: " + message.time_spent
 	// 	    + ", total time: " + pii_vault.current_report.report_time_spent);
 	flush_selective_entries("current_report", ["report_time_spent"]);
@@ -804,7 +810,7 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 		    + ", total time: " + pii_vault.current_report.myfootprint_time_spent);
 
 	pii_vault.aggregate_data.total_time_spent += message.time_spent;
-	flush_selective_entries("aggregate_data", ["total_time_spent"]);
+    flush_selective_entries("aggregate_data", ["total_time_spent"]);
     }
     else if (message.type == "get_report_setting") {
 	r = {};

@@ -832,7 +832,7 @@ function pii_log_user_input_type(message) {
 // synchronization to storage needed every 10 mins
 // flush lowest used websites every 10 hours
 
-function add_visited_site_to_cache(domain) {
+function add_visited_site_to_cache(domain, time_spent) {
     // input: domain -> calculate site_hash
     // if site_hash not in vault load_visited_site_from_storage(site_hash) into cache or create new entry
     // add site_hash to cache.visited_sites
@@ -843,10 +843,10 @@ function add_visited_site_to_cache(domain) {
     var etld_hash = tmp.substring(tmp.length - 8, tmp.length);
 
     if (!(etld_hash in cache.visited_sites)) {
-        load_visited_site_from_storage(etld_hash)
+        load_visited_site_from_storage(etld_hash, time_spent)
     } else {
     // not in cache but visits should be added
-        update_visited_site_in_cache(etld_hash)
+        update_visited_site_in_cache(etld_hash, time_spent)
         update_site_stats_in_cache(1, 0, 0)
     }
     console.log("APPU DEBUG: Done adding and updating visited site " + etld_hash + " in cache")
@@ -874,17 +874,15 @@ function create_site_stats_in_cache() {
     cache.site_stats["dirty"] = 0
 }
 
-function update_visited_site_in_cache(etld_hash) {
-    // TODO fix time_spent stuff
+function update_visited_site_in_cache(etld_hash, time_spent) {
     if (!(etld_hash in cache.visited_sites)) {
         create_visited_site_in_cache(etld_hash)
     }
-    time_spent = 0.1
     cache.visited_sites[etld_hash]["tot_time_spent"] += time_spent
     cache.visited_sites[etld_hash]["latest_visit"] = new Date()
     cache.visited_sites[etld_hash]["num_visits"] += 1
     cache.visited_sites[etld_hash]["dirty"] = 1
-    console.log("APPU DEBUG: Update visited_site entry in cache for " + etld_hash)
+    console.log("APPU DEBUG: Update visited_site entry in cache for " + etld_hash + " Time spent = " + time_spent)
 }
 
 function update_site_stats_in_cache(visited_sites_increment, removed_sites_increment, user_account_sites_increment) {
@@ -901,7 +899,7 @@ function update_site_stats_in_cache(visited_sites_increment, removed_sites_incre
     console.log("APPU DEBUG: Update site_stats in cache")
 }
 
-function load_visited_site_from_storage(etld_hash) {
+function load_visited_site_from_storage(etld_hash, time_spent) {
     //input: site_hash; if site found then load it, else create it. dirty will be 1 when it gets updated
     read_from_local_storage("visited_sites", (function(site_hash) {
         return function(data) {
@@ -918,11 +916,11 @@ function load_visited_site_from_storage(etld_hash) {
                 // and visited site stats
                 cache.site_stats["size_visited_sites"] += 1
                 cache.site_stats["dirty"] = 1
-                update_visited_site_in_cache(site_hash)
+                update_visited_site_in_cache(site_hash, time_spent)
                 update_site_stats_in_cache(1, 0, 0)
             }
         }
-    }(etld_hash)));
+    }(etld_hash, time_spent)));
 }
 
 function flush_cache_to_storage() {
