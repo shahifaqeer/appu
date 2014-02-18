@@ -615,7 +615,7 @@ function add_visited_site(domain) {
     var tmp = sjcl.codec.hex.fromBits(sjcl.hash.sha256.hash(etld));
     var etld_hash = tmp.substring(tmp.length - 8, tmp.length);
 
-    // TODO include parameters time_spent in sec, Date.now()
+    // TODO include parameters time_spent in sec, new Date()
     offload_visited_site_info(etld_hash)
 }
 
@@ -660,7 +660,7 @@ function offload_visited_site_info_callback(site_hash, timespent, now) {
 
 function offload_visited_site_info(etld_hash, timespent, now) {
     timespent = typeof timespent !== 'undefined' ? timespent : 42;
-    now = typeof now !== 'undefined' ? now : Date.now();
+    now = typeof now !== 'undefined' ? now : new Date();
     load_visited_site_info(etld_hash, offload_visited_site_info_callback(etld_hash, timespent, now))
 }
 
@@ -881,7 +881,7 @@ function update_visited_site_in_cache(etld_hash) {
     }
     time_spent = 0.1
     cache.visited_sites[etld_hash]["tot_time_spent"] += time_spent
-    cache.visited_sites[etld_hash]["latest_visit"] = Date.now()
+    cache.visited_sites[etld_hash]["latest_visit"] = new Date()
     cache.visited_sites[etld_hash]["num_visits"] += 1
     cache.visited_sites[etld_hash]["dirty"] = 1
     console.log("APPU DEBUG: Update visited_site entry in cache for " + etld_hash)
@@ -956,7 +956,7 @@ function flush_cache_to_storage() {
         }
         write_to_local_storage(data)
     })
-    console.log("APPU DEBUG: Flush cache to storage at time " + Date.now())
+    console.log("APPU DEBUG: Flush cache to storage at time " + new Date())
 }
 
 function clear_extra_visited_sites_from_cache(MAX_SIZE_VISITED_SITES) {
@@ -982,6 +982,7 @@ function clear_extra_visited_sites_from_cache(MAX_SIZE_VISITED_SITES) {
             delete cache.visited_sites[site_hash]
         }
         cache.site_stats.size_visited_sites = MAX_SIZE_VISITED_SITES
+        cache.site_stats.dirty = 1
     }
     console.log("APPU DEBUG: New length of visited_sites in cache should be " + cache.site_stats.size_visited_sites + " but is " + Object.keys(cache.visited_sites).length)
 }
@@ -1027,14 +1028,14 @@ function print_site_stats_from_cache() {
 function print_visited_sites_from_storage() {
     console.log("APPU DEBUG: Printing all visited_sites from memory")
     read_from_local_storage("visited_sites", function(data) {
-        console.log(JSON.stringify(data))
+        console.log(JSON.stringify(data["visited_sites"]))
     })
 }
 
 function print_site_stats_from_storage() {
     console.log("APPU DEBUG: Printing all visited_sites from memory")
     read_from_local_storage("site_stats", function(data) {
-        console.log(JSON.stringify(data))
+        console.log(JSON.stringify(data["site_stats"]))
     })
 }
 
