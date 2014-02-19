@@ -11,7 +11,7 @@ var ext_id = chrome.i18n.getMessage('@@extension_id');
 
 var pii_vault = { "options" : {}, "config": {}};
 
-var pending_warnings = {};
+var pending_warnings = {}; 
 var pending_pi_fetch = {};
 
 //If user says remind me later
@@ -105,7 +105,7 @@ setInterval(background_tasks, 1000 * bg_tasks_interval * 60);
 
 // Check if appu was disabled in the last run. If yes, then check if disable period is over yet.
 if (pii_vault.config.status == "disabled") {
-    if (((new Date()) - (new Date(pii_vault.config.disable_start))) >
+    if (((new Date()) - (new Date(pii_vault.config.disable_start))) > 
 	(60 * 1000 * pii_vault.config.disable_period)) {
 	pii_vault.config.status = "active";
 	pii_vault.config.disable_period = -1;
@@ -115,9 +115,9 @@ if (pii_vault.config.status == "disabled") {
 	console.log((new Date()) + ": Enabling Appu");
     }
     else {
-	console.log("Appu disabled at '" + pii_vault.config.disable_start + "' for "
+	console.log("Appu disabled at '" + pii_vault.config.disable_start + "' for " 
 		    + pii_vault.config.disable_period + " minutes");
-
+	
 	pii_vault.config.enable_timer = setInterval(start_time_loop, 1000);
 	vault_write("config:enable_timer", pii_vault.config.enable_timer);
 
@@ -318,13 +318,8 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
     else if (message.type == "time_spent") {
 	focused_tabs -= 1;
 	var domain = get_domain(message.domain);
-
+	
 	pii_vault.current_report.total_time_spent += message.time_spent;
-
-    //update cache.visited_site[site_hash].tot_time_spent using add_visited_site_to_cache()
-    //can also save both time_spent and Date.now() info to get site usage as time series
-    add_visited_site_to_cache(domain, message.time_spent)
-
 	if (message.am_i_logged_in) {
 	    pii_vault.current_report.total_time_spent_logged_in += message.time_spent;
 	}
@@ -332,8 +327,8 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 	    pii_vault.current_report.total_time_spent_wo_logged_in += message.time_spent;
 	}
 
-	flush_selective_entries("current_report", ["total_time_spent",
-						   "total_time_spent_logged_in",
+	flush_selective_entries("current_report", ["total_time_spent", 
+						   "total_time_spent_logged_in", 
 						   "total_time_spent_wo_logged_in"]);
 
 	pii_vault.aggregate_data.all_sites_total_time_spent += message.time_spent;
@@ -349,7 +344,7 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 	    }
 	    flush_selective_entries("current_report", ["user_account_sites"]);
 	    send_user_account_site_row_to_reports(domain);
-	    // console.log("APPU DEBUG: Time spent: " + pii_vault.current_report.user_account_sites[domain].tts +
+	    // console.log("APPU DEBUG: Time spent: " + pii_vault.current_report.user_account_sites[domain].tts + 
 	    // 		", at: " + domain);
 	}
     }
@@ -357,7 +352,7 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 	if (sender.tab) {
 	    chrome.tabs.query( { active: true }, (function(sender_tab_id, sendResponse) {
 			return function(active_tabs) {
-			    var response_sent = false;
+			    var response_sent = false; 
 			    var r = {};
 			    for(var i = 0; i < active_tabs.length; i++) {
 				if (sender_tab_id == active_tabs[i].id) {
@@ -371,7 +366,7 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 			    sendResponse(r);
 			}
 		    })(sender.tab.id, sendResponse));
-
+	    
 	    if(pending_warnings[sender.tab.id] != undefined) {
 		var p = pending_warnings[sender.tab.id];
 		if (p.event_type == 'logout_attempt') {
@@ -382,7 +377,7 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 		    //cleanup_session_cookie_store(p.domain);
 		}
 	    }
-
+	    
 	    return true;
 	}
     }
@@ -399,7 +394,7 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 		    //print_all_cookies(get_domain(domain), "LOGIN_COMPLETE");
 		    detect_login_cookies(get_domain(domain));
 		}
-
+		
 		var pi_usernames = get_all_usernames();
 		if (pi_usernames.length > 0) {
 		    console.log("Here here: Sending command to detect usernames");
@@ -422,10 +417,11 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 	    var cit = cookie_investigating_tabs[sender.tab.id];
 
 	    if (message.curr_epoch_id == cit.get_epoch_id()) {
-		console.log("APPU DEBUG: Username detection response for 'COOKIE-INVESTIGATION', (page_load_success: " +
-			    cit.get_page_load_success() + ", domain: " + message.domain +
-			    "), Num usernames detected(invisible? " + message.invisible_check_invoked + "): " +
-			    tot_detected_unames);
+		console.log("APPU DEBUG: Username detection response for 'COOKIE-INVESTIGATION', (page_load_success: " + 
+			    cit.get_page_load_success() + ", domain: " + message.domain + 
+			    "), Num usernames detected(invisible? " + message.invisible_check_invoked + "): " + 
+			    tot_detected_unames + 
+			    " (total time: " + message.total_time + "ms)");
 
 		var num_pwd_boxes = message.num_password_boxes;
 		// cit.compare_screen_layout(message.visible_elements);
@@ -437,12 +433,28 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 		    cit.pageload_timeout = undefined;
 		}
 
-		process_last_epoch(sender.tab.id, message.present_usernames, num_pwd_boxes);
+		var is_user_logged_in = cit.is_user_logged_in(message.present_usernames);
+		if (is_user_logged_in == false &&
+		    message.total_time < (cit.get_page_load_time() * 3)) {
+		    console.log("APPU DEBUG: User does not seem to be logged-in." + 
+				" Waiting for 3 times the normal page load time: " + 
+				(cit.get_page_load_time() * 1.5) + " ms");
+		    window.setTimeout(function(){
+			    check_usernames_for_cookie_investigation(sender.tab.id);
+		        }, (cit.get_page_load_time() * 1.5));
+		}
+		else {
+		    if (is_user_logged_in && 
+			cit.get_state() == 'st_verification_epoch') {
+			cit.set_page_load_time(message.total_time - message.user_detection_time);
+		    }
+		    process_last_epoch(sender.tab.id, message.present_usernames, num_pwd_boxes);
+		}
 	    }
 	}
 	else {
 	    console.log("APPU DEBUG: On domain(" + message.domain + ") Num usernames detected(invisible? " +
-			message.invisible_check_invoked + "): " +
+			message.invisible_check_invoked + "): " + 
 			tot_detected_unames);
 	    for (var uname in message.present_usernames.frequency) {
 		console.log("APPU DEBUG: Username: " + uname + ", Frequency: " + message.present_usernames.frequency[uname]);
@@ -480,7 +492,7 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 	// 		    },
 	// 	    ["responseHeaders"]);
 
-	console.log("APPU DEBUG: (" + message.caller + ", " + message.pwd_sentmsg +
+	console.log("APPU DEBUG: (" + message.caller + ", " + message.pwd_sentmsg + 
 		    "), Value of is_password_stored: " + message.is_stored);
 
 	var username = '';
@@ -489,13 +501,13 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 	if (message.uname_results.rc) {
 	    username = get_username_identifier(message.uname_results.username, true);
 	    username_length = message.uname_results.username.length;
-	    console.log("APPU DEBUG: Domain: " + message.domain + ", Username: "
+	    console.log("APPU DEBUG: Domain: " + message.domain + ", Username: " 
 			+ message.uname_results.username + ", username_identifier: " + username);
 	}
 	else {
 	    username = get_username_identifier('', true);
 	    username_length = 0;
-	    console.log("APPU DEBUG: Domain: " + message.domain + ", NO USERNAME FOUND, reason: " + reason
+	    console.log("APPU DEBUG: Domain: " + message.domain + ", NO USERNAME FOUND, reason: " + reason 
 			+ ", username_identifier: " + username);
 	}
 
@@ -508,7 +520,7 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 	pending_warnings[sender.tab.id] = {
 	    'pending_warnings' : pend_warn,
 	    'event_type' : 'login_attempt',
-	    'user_is_warned' : false,
+	    'user_is_warned' : false, 
 	    'passwd' : message.passwd,
 	    'pwd_strength' : r.pwd_strength,
 	    'domain' : message.domain,
@@ -528,15 +540,20 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 	    var cit = cookie_investigating_tabs[sender.tab.id];
 
 	    if (message.curr_epoch_id == cit.get_epoch_id()) {
-		console.log("APPU DEBUG: Setting page load success for EPOCH-ID: " +
-			    message.curr_epoch_id);
+		console.log("APPU DEBUG: Setting page load success for EPOCH-ID: " + 
+			    message.curr_epoch_id +
+			    " (page_load_time: " + message.page_load_time + " ms)");
+
+		if (cit.get_epoch_id() == 1) {
+		    cit.set_page_load_time(message.page_load_time);
+		}
 
 		cit.set_page_load_success(true);
 		if (cit.pageload_timeout != undefined) {
 		    window.clearInterval(cit.pageload_timeout);
 		    cit.pageload_timeout = undefined;
 		}
-
+		
 		if (cit.get_state() == 'st_cookie_test_start') {
 		    console.log("----------------------------------------");
 		    process_last_epoch(sender.tab.id, undefined, undefined)
@@ -551,7 +568,7 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 			 cit.get_state() == 'st_gub_cookiesets_block_test'                ||
 			 cit.get_state() == 'st_expand_suspected_account_cookies') {
 		    // We test here that user is still logged into the web application.
-		console.log("Here here: Calling check_usernames_for_cookie_investigation(), EPOCH-ID: " +
+		console.log("Here here: Calling check_usernames_for_cookie_investigation(), EPOCH-ID: " + 
 			    message.curr_epoch_id);
 		check_usernames_for_cookie_investigation(sender.tab.id);
 		}
@@ -563,7 +580,7 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 	    return;
 	}
 
-// 	console.log("APPU DEBUG: tabid: "+sender.tab.id+", In query status: " +
+// 	console.log("APPU DEBUG: tabid: "+sender.tab.id+", In query status: " + 
 // 	template_processing_tabs[sender.tab.id]);
 
 	r = {};
@@ -572,7 +589,7 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 	r.lottery_setting = pii_vault.options.lottery_setting;
 
 	if (sender.tab && sender.tab.id in template_processing_tabs) {
-	    if (template_processing_tabs[sender.tab.id] != "") {
+	    if (template_processing_tabs[sender.tab.id] != "") { 
 		//console.log(sprintf("APPU DEBUG: Tab %s was sent a go-to url earlier", sender.tab.id));
 		var dummy_tab_id = sprintf('tab-%s', sender.tab.id);
 		template_processing_tabs[sender.tab.id] = "";
@@ -594,29 +611,29 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
     else if (message.type == "signed_in") {
 	if (sender.tab && !(sender.tab.id in cookie_investigating_tabs)) {
 	    var domain = get_domain(message.domain);
-
+	    
 	    if (message.value == 'yes') {
 		console.log("APPU DEBUG: Signed in for site: " + get_domain(message.domain));
-
+		
 		// First check with which username the user has logged into the site
 		var username_list = get_logged_in_username(domain);
 		add_domain_to_uas(domain, username_list[0], username_list[1], undefined);
-
+		
 		var hk = username_list[0] + ":" + domain;
 		if (hk in pii_vault.current_report.user_account_sites) {
-		    pii_vault.current_report.user_account_sites[hk].pwd_unchanged_duration =
+		    pii_vault.current_report.user_account_sites[hk].pwd_unchanged_duration = 
 			get_pwd_unchanged_duration(domain, username_list[0]);
 		}
 		else {
 		    console.log("APPU DEBUG: " + hk + " not present in cr.user_account_sites");
 		}
-
+		
 		flush_selective_entries("current_report", ["user_account_sites"]);
-
-		if (sender.tab && sender.tab.id in pending_pi_fetch) {
+		
+		if (sender.tab && sender.tab.id in pending_pi_fetch) { 
 		    if (pending_pi_fetch[sender.tab.id] == domain) {
 			console.log("APPU DEBUG: domain: " + domain + ", tab-id: " + sender.tab.id);
-			check_if_pi_fetch_required(domain, sender.tab.id, sender.tab);
+			check_if_pi_fetch_required(domain, sender.tab.id, sender.tab);		
 			pending_pi_fetch[sender.tab.id] = "";
 		    }
 		    else {
@@ -639,7 +656,7 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 		console.log("APPU DEBUG: Signed in status UNSURE: " + get_domain(message.domain));
 	    }
 	    else {
-		console.log("APPU DEBUG: Undefined signed in value " +
+		console.log("APPU DEBUG: Undefined signed in value " + 
 			    message.value + ", for domain: " + get_domain(message.domain));
 	    }
 	}
@@ -658,7 +675,7 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 
 	var hk = username_list[0] + ":" + domain;
 	if (hk in pii_vault.current_report.user_account_sites) {
-	    pii_vault.current_report.user_account_sites[hk].pwd_unchanged_duration =
+	    pii_vault.current_report.user_account_sites[hk].pwd_unchanged_duration = 
 		get_pwd_unchanged_duration(domain, username_list[0]);
 	    pii_vault.current_report.user_account_sites[hk].num_logouts += 1;
 	}
@@ -669,19 +686,19 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 	send_user_account_site_row_to_reports(domain);
 
 	pending_warnings[sender.tab.id] = {
-	    'event_type' : 'logout_attempt',
+	    'event_type' : 'logout_attempt', 
 	    'domain' : domain,
 	};
     }
     else if (message.type == "simulate_click_done") {
-	console.log("APPU DEBUG: tabid: " + sender.tab.id + ", In simulate click: "
+	console.log("APPU DEBUG: tabid: " + sender.tab.id + ", In simulate click: " 
 		    + template_processing_tabs[sender.tab.id]);
 	if (sender.tab.id in template_processing_tabs) {
-	    if (template_processing_tabs[sender.tab.id] != "") {
+	    if (template_processing_tabs[sender.tab.id] != "") { 
 		console.log(sprintf("APPU DEBUG: Tab %s was sent a go-to url earlier", sender.tab.id));
 		var dummy_tab_id = sprintf('tab-%s', sender.tab.id);
 		template_processing_tabs[sender.tab.id] = "";
-		console.log("APPU DEBUG: YYY tabid: " + sender.tab.id + ", value: "
+		console.log("APPU DEBUG: YYY tabid: " + sender.tab.id + ", value: " 
 			    + template_processing_tabs[sender.tab.id]);
 		$('#' + dummy_tab_id).trigger("page-is-loaded");
 	    }
@@ -705,9 +722,8 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 	r = pii_check_blacklisted_sites(message);
 	if (r.blacklisted == "no") {
 	    var etld = get_domain(message.domain);
-
-        add_visited_site(etld);
-	    //add_ad_non_uas(etld);
+	    
+	    add_ad_non_uas(etld);
 	    if(pii_vault.total_site_list.indexOf(etld) == -1) {
 
 		pii_vault.total_site_list.push(etld);
@@ -717,7 +733,7 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 		pii_vault.aggregate_data.num_total_sites += 1;
 		flush_selective_entries("aggregate_data", ["num_total_sites"]);
 
-		pii_vault.current_report.num_non_user_account_sites =
+		pii_vault.current_report.num_non_user_account_sites = 
 		    pii_vault.current_report.num_total_sites - pii_vault.current_report.num_user_account_sites;
 		flush_selective_entries("current_report", ["num_non_user_account_sites"]);
 
@@ -732,10 +748,10 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 	response_report.report_number = message.report_number;
 	response_report.num_total_report = pii_vault.past_reports.length + 1;
 	response_report.pi_field_value_identifiers = pii_vault.aggregate_data.pi_field_value_identifiers;
-
+	
 	response_report.num_user_account_sites_overall = Object.keys(pii_vault.password_hashes).length;
 	response_report.num_non_user_account_sites_overall = pii_vault.aggregate_data.num_non_user_account_sites;
-	response_report.num_total_sites_overall = response_report.num_user_account_sites_overall +
+	response_report.num_total_sites_overall = response_report.num_user_account_sites_overall + 
 	    response_report.num_non_user_account_sites_overall;
 
 	sendResponse(response_report);
@@ -780,13 +796,12 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
     }
     else if (message.type == "report_time_spent") {
 	pii_vault.current_report.report_time_spent += message.time_spent;
-
-	// console.log("APPU DEBUG: Time spent in reports tab: " + message.time_spent
+	// console.log("APPU DEBUG: Time spent in reports tab: " + message.time_spent 
 	// 	    + ", total time: " + pii_vault.current_report.report_time_spent);
 	flush_selective_entries("current_report", ["report_time_spent"]);
 	if (((pii_vault.current_report.report_time_spent / (60*1000)) > 1) &&
 	    (!pii_vault.current_report.report_reviewed)) {
-	    //If user has spent more than a minute on reports page then set
+	    //If user has spent more than a minute on reports page then set 
 	    //report reviewed to true
 	    pii_vault.current_report.report_reviewed = true;
 	    flush_selective_entries("current_report", ["report_reviewed"]);
@@ -806,11 +821,11 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 	pii_vault.current_report.myfootprint_time_spent += message.time_spent;
 	flush_selective_entries("current_report", ["myfootprint_time_spent"]);
 
-	console.log("APPU DEBUG: Time spent in myfootprint tab: " + message.time_spent
+	console.log("APPU DEBUG: Time spent in myfootprint tab: " + message.time_spent 
 		    + ", total time: " + pii_vault.current_report.myfootprint_time_spent);
 
 	pii_vault.aggregate_data.total_time_spent += message.time_spent;
-    flush_selective_entries("aggregate_data", ["total_time_spent"]);
+	flush_selective_entries("aggregate_data", ["total_time_spent"]);
     }
     else if (message.type == "get_report_setting") {
 	r = {};
@@ -892,7 +907,7 @@ chrome.extension.onMessage.addListener(function(message, sender, sendResponse) {
 	text_report_tab_ids[message.tabid] = message.reportnumber;
     }
     else if (message.type == "get-text-report-number") {
-	sendResponse({
+	sendResponse({ 
 	    'reportnumber' : text_report_tab_ids[sender.tab.id]
 	});
     }
@@ -918,11 +933,11 @@ if (!pii_vault.initialized) {
 
 // reader.onloadstart = function(event) {
 //     console.error("In loadstart");
-// }
+// } 
 
 // reader.onloadend = function(event) {
 //     console.error("In loadend");
-// }
+// } 
 
 // reader.readAsText(chrome.extension.getURL("background.html"));
 
@@ -950,7 +965,7 @@ function test_read() {
 
 	    var k = unzip(files[1].fileData);
 	    unzipped_file2 = String.fromCharCode.apply(null, k);
-
+	    
 	    //write_file("fpi/uz1", unzipped_file1);
 	    //write_file("fpi/uz2", unzipped_file2);
 	};
@@ -978,7 +993,7 @@ function make_user_approved_always(site) {
 
 
 //make_user_approved_always("dominos.com");
-
+ 
 // function print_open_windows(windows) {
 //     for (var i = 0; i < windows.length; i++) {
 // 	console.log("APPU DEBUG: ----------- --------- -------- ---------- ");
